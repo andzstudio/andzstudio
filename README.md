@@ -1,4 +1,4 @@
-# <img src="https://user-images.githubusercontent.com/74038190/214644152-52f47eb3-5e31-4f47-8758-05c9468d5596.gif" width="40" style="vertical-align:bottom" /> ANDZ
+# <img src="https://user-images.githubusercontent.com/74038190/214644152-52f47eb3-5e31-4f47-8758-05c9468d5596.gif" width="40" style="vertical-align:bottom" /> A N D Z // S t u d i o
 
 ![Web Developer](https://img.shields.io/badge/Web-Developer-black?style=flat-square&labelColor=white)
 
