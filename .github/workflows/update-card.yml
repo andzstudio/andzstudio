@@ -1,8 +1,8 @@
-name: Update Nebula OS Card
+name: Update iOS Dashboard
 
 on:
   schedule:
-    - cron: '*/30 * * * *' # Ruleaza la fiecare 30 min
+    - cron: '*/30 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -28,8 +28,8 @@ jobs:
 
       - name: Commit and Push
         run: |
-          git config --global user.name "Nebula-Bot"
-          git config --global user.email "bot@andz.os"
-          git add nebula_card.svg
-          git commit -m "System status update" || echo "No changes to commit"
+          git config --global user.name "andz-ios-bot"
+          git config --global user.email "bot@andzcr.com"
+          git add ios_dashboard.svg
+          git commit -m "Update dashboard widgets" || echo "No changes to commit"
           git push
