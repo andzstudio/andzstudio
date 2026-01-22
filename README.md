@@ -35,4 +35,3 @@ Hi! My name is [**Andrei**](https://andzcr.github.io), and I enjoy creating clea
 <div align="center">
   <img src="./dashboard_final.svg" width="100%" />
 </div>
-
