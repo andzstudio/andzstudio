@@ -1,4 +1,4 @@
-name: Update Dashboard
+name: Update Holographic HUD
 
 on:
   schedule:
@@ -30,6 +30,6 @@ jobs:
         run: |
           git config --global user.name "andzcr-bot"
           git config --global user.email "bot@andzcr.com"
-          git add card_left.svg card_right.svg
-          git commit -m "Update dashboard stats" || echo "No changes to commit"
+          git add hud_card.svg
+          git commit -m "Update system hud" || echo "No changes to commit"
           git push
