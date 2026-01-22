@@ -1,17 +1,21 @@
 import requests
 import datetime
 from datetime import timedelta
+
 # CONFIGURARE
 USERNAME = "andzcr"
+# Link-ul RAW catre logo-ul tau (important: raw, nu blob)
 LOGO_URL = "https://raw.githubusercontent.com/andzcr/andzcr.github.io/main/resources/photos/andz-logo.png"
 
 def get_data():
     try:
+        # 1. Repo info
         url = f"https://api.github.com/users/{USERNAME}/repos?sort=pushed&direction=desc"
         r = requests.get(url, timeout=10)
         if r.status_code != 200 or not r.json(): return None, None
         repo = r.json()[0]
         
+        # 2. Commit info
         c_url = f"https://api.github.com/repos/{USERNAME}/{repo['name']}/commits"
         c = requests.get(c_url, timeout=10)
         commit = c.json()[0] if c.status_code == 200 and c.json() else None
@@ -23,12 +27,13 @@ def get_data():
 def create_ultimate_card(repo, commit):
     if not repo: return
 
-    # --- DATA ---
+    # --- DATA PROCESSING ---
     name = repo['name']
     language = repo['language'] if repo['language'] else "Unknown Language"
     
     if commit:
         msg = commit['commit']['message'].split('\n')[0]
+        # Trunchiem inteligent mesajul
         if len(msg) > 50: msg = msg[:48] + "..."
         author_name = commit['commit']['author']['name']
     else:
@@ -42,23 +47,28 @@ def create_ultimate_card(repo, commit):
     
     minutes_diff = (now_ro - last_push_ro).total_seconds() / 60
     
+    # STATUS LOGIC (45 min window)
     if minutes_diff < 45:
         is_online = True
         status_text = "Active Session"
+        # Verde neon Apple
         status_color = "#32d74b" 
         status_sub = "Working now"
+        # Animatie de pulsare doar cand e online
         pulse_anim = """<animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite" />
                         <animate attributeName="opacity" values="1;0.6;1" dur="2s" repeatCount="indefinite" />"""
     else:
         is_online = False
         time_str = last_push_ro.strftime("%H:%M")
         status_text = "System Idle"
+        # Gri neutru
         status_color = "#86868b"
         status_sub = f"Last seen {time_str}"
         pulse_anim = ""
 
     last_date_nice = last_push_ro.strftime("%d %B")
-    
+
+    # --- ULTIMATE SVG DESIGN ---
     svg = f"""
     <svg width="500" height="260" viewBox="0 0 500 260" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
       <defs>
@@ -125,4 +135,23 @@ def create_ultimate_card(repo, commit):
           </g>
       </g>
 
-      
+      <g transform="translate(35, 225)">
+          <rect x="0" y="-16" width="auto" height="22" rx="6" fill="rgba(10, 132, 255, 0.15)" stroke="rgba(10, 132, 255, 0.3)"/>
+          <rect x="0" y="-16" width="{len(language)*7 + 20}" height="22" rx="6" fill="rgba(10, 132, 255, 0.15)" stroke="rgba(10, 132, 255, 0.3)"/>
+          <text x="{len(language)*3.5 + 10}" y="0" class="sf t-accent" font-size="11" font-weight="700" text-anchor="middle">{language}</text>
+          
+          <text x="160" y="0" class="sf t-grey-dark" font-size="11">Last update: {last_date_nice}</text>
+          
+          <text x="450" y="0" text-anchor="end" class="sf t-grey-dark" font-size="10" font-weight="600" letter-spacing="1"> andzOS System Bot</text>
+      </g>
+
+    </svg>
+    """
+    
+    # Salvam ca 'andz_os_card.svg' pentru noul branding
+    with open("andz_os_card.svg", "w", encoding="utf-8") as f:
+        f.write(svg)
+
+if __name__ == "__main__":
+    r, c = get_data()
+    create_ultimate_card(r, c)
