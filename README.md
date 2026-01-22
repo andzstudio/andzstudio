@@ -33,5 +33,5 @@ Hi! My name is [**Andrei**](https://andzcr.github.io), and I enjoy creating clea
 </div>
 
 <div align="center">
-  <img src="./andz_os_card.svg" width="500" />
+  <img src="./nebula_card.svg" width="600" />
 </div>
