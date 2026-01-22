@@ -1,108 +1,158 @@
 import requests
 import datetime
 from datetime import timedelta
+from collections import defaultdict
 
 # CONFIGURARE
 USERNAME = "andzcr"
+TOKEN = "" # Lasa gol daca nu ai token, dar API-ul are limite (60 requests/ora). 
+# Daca ai erori de limita, iti arat cum sa pui un token.
 
-def get_last_updated_repo():
-    try:
-        # Luam repo-urile sortate dupa push
-        url = f"https://api.github.com/users/{USERNAME}/repos?sort=pushed&direction=desc"
-        response = requests.get(url)
-        if response.status_code == 200:
-            repos = response.json()
-            if repos:
-                return repos[0]
-    except Exception as e:
-        print(f"Error fetching repo: {e}")
-    return None
-
-def create_svg(repo):
-    if not repo:
-        return
-    
-    # Date extrase
-    name = repo['name']
-    desc = repo['description'] if repo['description'] else "No description provided."
-    if len(desc) > 60:
-        desc = desc[:57] + "..."
+def get_data():
+    headers = {}
+    if TOKEN:
+        headers['Authorization'] = f"token {TOKEN}"
         
-    language = repo['language'] if repo['language'] else "N/A"
-    stars = repo['stargazers_count']
-    forks = repo['forks_count']
+    # Luam repo-urile (pana la 100 pt statistica)
+    url = f"https://api.github.com/users/{USERNAME}/repos?sort=pushed&direction=desc&per_page=100"
+    response = requests.get(url, headers=headers)
     
-    # Timezone fix: GitHub da ora in UTC, noi adaugam 2 ore pentru Romania
+    if response.status_code != 200:
+        return None, None
+        
+    repos = response.json()
+    if not repos:
+        return None, None
+        
+    # 1. Date pentru Ultimul Proiect (Primul din lista)
+    last_repo = repos[0]
+    
+    # 2. Calculam Top Limbaje din toate repo-urile
+    langs = defaultdict(int)
+    total_size = 0
+    
+    for repo in repos:
+        if repo['language']:
+            # Folosim marimea repo-ului ca aproximare pentru cat cod e scris
+            langs[repo['language']] += repo['size']
+            total_size += repo['size']
+            
+    # Sortam si luam top 4
+    top_langs = sorted(langs.items(), key=lambda x: x[1], reverse=True)[:4]
+    
+    # Convertim in procente
+    stats = []
+    if total_size > 0:
+        for l, size in top_langs:
+            percent = (size / total_size) * 100
+            stats.append((l, percent))
+            
+    return last_repo, stats
+
+def create_left_card(repo):
+    # CARD 1: LAST PROJECT (FOCUS)
+    if not repo: return
+
+    name = repo['name']
+    desc = repo['description'] if repo['description'] else "Top secret project."
+    if len(desc) > 50: desc = desc[:47] + "..."
+    
     last_push_utc = datetime.datetime.strptime(repo['pushed_at'], "%Y-%m-%dT%H:%M:%SZ")
     last_push_ro = last_push_utc + timedelta(hours=2)
-    time_str = last_push_ro.strftime("%d %b %Y, %H:%M") # Format curat
+    time_str = last_push_ro.strftime("%H:%M")
+    date_str = last_push_ro.strftime("%d %b")
 
-    # SVG Design - Modern Dark Theme cu Animatie CSS
-    svg_content = f"""
-    <svg width="450" height="220" viewBox="0 0 450 220" xmlns="http://www.w3.org/2000/svg">
+    svg = f"""
+    <svg width="400" height="200" viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
       <style>
-        .container {{ font-family: 'Segoe UI', Ubuntu, Sans-Serif; fill: #E6EDF3; }}
-        .card-bg {{ fill: #0d1117; stroke: #30363d; stroke-width: 1px; rx: 15px; }}
+        .bg {{ fill: #0d1117; stroke: #2f80ed; stroke-width: 2px; rx: 10px; }}
+        .text {{ font-family: 'Courier New', monospace; fill: #fff; }}
+        .label {{ font-size: 10px; fill: #8b949e; }}
+        .title {{ font-size: 18px; font-weight: bold; fill: #58a6ff; }}
+        .desc {{ font-size: 12px; fill: #c9d1d9; }}
         
-        /* Gradient Animat pentru Header */
-        .header-bg {{ fill: url(#grad1); }}
-        @keyframes gradient-anim {{
-            0% {{ stop-color: #2f80ed; }}
-            50% {{ stop-color: #a044ff; }}
-            100% {{ stop-color: #2f80ed; }}
+        /* Animatie Puls */
+        @keyframes pulse {{
+            0% {{ opacity: 0.5; r: 3; }}
+            50% {{ opacity: 1; r: 5; }}
+            100% {{ opacity: 0.5; r: 3; }}
         }}
-        #stop1 {{ animation: gradient-anim 4s infinite; }}
+        .status-dot {{ fill: #3fb950; animation: pulse 2s infinite; }}
         
-        /* Texte */
-        .title {{ font-size: 20px; font-weight: 700; fill: #ffffff; }}
-        .desc {{ font-size: 14px; fill: #8b949e; }}
-        .label {{ font-size: 12px; font-weight: 600; fill: #8b949e; }}
-        .value {{ font-size: 12px; font-weight: 600; fill: #E6EDF3; }}
-        
-        /* Icon placeholders (simple circles/paths for clean look) */
-        .icon {{ fill: #8b949e; }}
+        /* Animatie Linie */
+        @keyframes scan {{
+            0% {{ width: 0; }}
+            100% {{ width: 100px; }}
+        }}
+        .loading-line {{ stroke: #58a6ff; stroke-width: 2; stroke-dasharray: 100; stroke-dashoffset: 100; animation: scan 1.5s forwards; }}
       </style>
       
-      <defs>
-        <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" style="stop-color:#2f80ed;stop-opacity:1" id="stop1" />
-          <stop offset="100%" style="stop-color:#00c6ff;stop-opacity:1" />
-        </linearGradient>
-        <clipPath id="clip-header">
-            <path d="M1 1 L449 1 L449 60 L1 60 Z" />
-        </clipPath>
-      </defs>
+      <rect width="398" height="198" x="1" y="1" class="bg" />
+      
+      <circle cx="20" cy="25" r="4" class="status-dot" />
+      <text x="35" y="28" class="text" font-size="12" fill="#3fb950">ACTIVE SESSION</text>
+      <text x="320" y="28" class="text" font-size="12" fill="#8b949e">{time_str}</text>
+      
+      <text x="20" y="70" class="label">CURRENT MISSION</text>
+      <text x="20" y="95" class="text title">{name}</text>
+      <text x="20" y="115" class="text desc">{desc}</text>
+      
+      <line x1="20" y1="140" x2="380" y2="140" stroke="#30363d" />
+      
+      <text x="20" y="165" class="label">LAST COMMIT</text>
+      <text x="20" y="180" class="text" font-size="12">{date_str} @ {time_str}</text>
+      
+      <text x="250" y="165" class="label">STATUS</text>
+      <text x="250" y="180" class="text" font-size="12" fill="#3fb950">IN PROGRESS...</text>
+    </svg>
+    """
+    with open("card_left.svg", "w", encoding="utf-8") as f: f.write(svg)
 
-      <rect x="0.5" y="0.5" width="449" height="219" class="card-bg" />
+def create_right_card(stats):
+    # CARD 2: ARSENAL (STATS)
+    if not stats: return
+
+    # Generam barele de progres dinamic
+    bars_svg = ""
+    y_pos = 60
+    colors = ["#f1e05a", "#3178c6", "#e34c26", "#563d7c"] # Galben, Albastru, Rosu, Mov
+    
+    for i, (lang, pct) in enumerate(stats):
+        color = colors[i % len(colors)]
+        width = int((pct / 100) * 200) # Max width 200px
+        
+        bars_svg += f"""
+        <text x="20" y="{y_pos}" class="text" font-size="12">{lang}</text>
+        <text x="330" y="{y_pos}" class="text" font-size="12" text-anchor="end">{int(pct)}%</text>
+        
+        <rect x="20" y="{y_pos + 5}" width="200" height="6" rx="3" fill="#30363d" />
+        <rect x="20" y="{y_pos + 5}" width="0" height="6" rx="3" fill="{color}">
+            <animate attributeName="width" from="0" to="{width}" dur="1s" fill="freeze" calcMode="spline" keySplines="0.25 0.1 0.25 1" />
+        </rect>
+        """
+        y_pos += 35
+
+    svg = f"""
+    <svg width="400" height="200" viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
+      <style>
+        .bg {{ fill: #0d1117; stroke: #a371f7; stroke-width: 2px; rx: 10px; }} 
+        /* Stroke mov pentru contrast cu celalalt card */
+        .text {{ font-family: 'Courier New', monospace; fill: #fff; }}
+        .header {{ font-size: 14px; font-weight: bold; fill: #a371f7; }}
+      </style>
       
-      <rect x="1" y="1" width="448" height="8" rx="14" fill="url(#grad1)" clip-path="url(#clip-header)" />
+      <rect width="398" height="198" x="1" y="1" class="bg" />
       
-      <text x="25" y="50" class="title">{name}</text>
+      <text x="20" y="30" class="header">/// SKILL_ARSENAL_ANALYSIS</text>
+      <line x1="20" y1="40" x2="380" y2="40" stroke="#30363d" />
       
-      <text x="25" y="80" class="desc">{desc}</text>
-      
-      <line x1="25" y1="100" x2="425" y2="100" stroke="#30363d" stroke-width="1" />
-      
-      <text x="25" y="130" class="label">MAIN LANGUAGE</text>
-      <text x="25" y="150" class="value" style="fill:#58a6ff;">● {language}</text>
-      
-      <text x="220" y="130" class="label">LAST UPDATE (RO)</text>
-      <text x="220" y="150" class="value">{time_str}</text>
-      
-      <text x="25" y="185" class="label">STARS</text>
-      <text x="25" y="205" class="value">★ {stars}</text>
-      
-      <text x="100" y="185" class="label">FORKS</text>
-      <text x="100" y="205" class="value">⑂ {forks}</text>
-      
-      <text x="360" y="205" font-size="10" fill="#30363d">andzcr bot</text>
+      {bars_svg}
       
     </svg>
     """
-    
-    with open("last_project.svg", "w", encoding="utf-8") as f:
-        f.write(svg_content)
+    with open("card_right.svg", "w", encoding="utf-8") as f: f.write(svg)
 
 if __name__ == "__main__":
-    repo = get_last_updated_repo()
-    create_svg(repo)
+    repo, stats = get_data()
+    create_left_card(repo)
+    create_right_card(stats)
