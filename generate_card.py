@@ -1,157 +1,161 @@
 import requests
 import datetime
 from datetime import timedelta
+import html
 
 # CONFIGURARE
 USERNAME = "andzcr"
-# Link-ul RAW catre logo-ul tau (important: raw, nu blob)
-LOGO_URL = "https://andzcr.github.io/resources/photos/andz-logo.png"
+# Nu mai avem nevoie de link extern pentru logo, folosim vectori interni.
 
 def get_data():
     try:
-        # 1. Repo info
+        # Timeout redus pentru rapiditate
         url = f"https://api.github.com/users/{USERNAME}/repos?sort=pushed&direction=desc"
-        r = requests.get(url, timeout=10)
+        r = requests.get(url, timeout=5)
         if r.status_code != 200 or not r.json(): return None, None
         repo = r.json()[0]
         
-        # 2. Commit info
         c_url = f"https://api.github.com/repos/{USERNAME}/{repo['name']}/commits"
-        c = requests.get(c_url, timeout=10)
+        c = requests.get(c_url, timeout=5)
         commit = c.json()[0] if c.status_code == 200 and c.json() else None
         return repo, commit
     except Exception as e:
         print(f"Error: {e}")
         return None, None
 
-def create_ultimate_card(repo, commit):
+def create_nebula_card(repo, commit):
     if not repo: return
 
     # --- DATA PROCESSING ---
-    name = repo['name']
-    language = repo['language'] if repo['language'] else "Unknown Language"
+    name = html.escape(repo['name'])
+    language = html.escape(repo['language']) if repo['language'] else "N/A"
     
     if commit:
         msg = commit['commit']['message'].split('\n')[0]
-        # Trunchiem inteligent mesajul
-        if len(msg) > 50: msg = msg[:48] + "..."
-        author_name = commit['commit']['author']['name']
+        if len(msg) > 45: msg = msg[:42] + "..."
+        msg = html.escape(msg)
+        sha = commit['sha'][:6]
     else:
-        msg = "Initial repository setup or no commit history available."
-        author_name = USERNAME
+        msg = "System initialized."
+        sha = "INIT"
 
-    # Time Logic (Romania UTC+2)
+    # Time Logic (UTC+2)
     last_push_utc = datetime.datetime.strptime(repo['pushed_at'], "%Y-%m-%dT%H:%M:%SZ")
     last_push_ro = last_push_utc + timedelta(hours=2)
     now_ro = datetime.datetime.utcnow() + timedelta(hours=2)
-    
     minutes_diff = (now_ro - last_push_ro).total_seconds() / 60
     
-    # STATUS LOGIC (45 min window)
+    # --- DYNAMIC THEME LOGIC ---
+    # 45 minute window pentru "Online"
     if minutes_diff < 45:
         is_online = True
-        status_text = "Active Session"
-        # Verde neon Apple
-        status_color = "#32d74b" 
-        status_sub = "Working now"
-        # Animatie de pulsare doar cand e online
-        pulse_anim = """<animate attributeName="r" values="4;6;4" dur="2s" repeatCount="indefinite" />
-                        <animate attributeName="opacity" values="1;0.6;1" dur="2s" repeatCount="indefinite" />"""
+        theme_color = "#00f2ff" # Neon Cyan (Online)
+        secondary_color = "#0066ff"
+        status_text = "NEBULA CORE: ONLINE"
+        status_sub = "Uplink active. Systems optimal."
+        # Animatie rapida si stralucitoare
+        bg_anim_dur = "15s"
+        pulse_anim = """<animate attributeName="r" values="3;5;3" dur="1.5s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;0.7;1" dur="1.5s" repeatCount="indefinite"/>"""
+        glow_filter = "url(#cyan-glow)"
     else:
         is_online = False
+        theme_color = "#bd00ff" # Deep Violet (Offline)
+        secondary_color = "#6a00ff"
         time_str = last_push_ro.strftime("%H:%M")
-        status_text = "System Idle"
-        # Gri neutru
-        status_color = "#86868b"
-        status_sub = f"Last seen {time_str}"
-        pulse_anim = ""
+        status_text = "NEBULA CORE: IDLE"
+        status_sub = f"Last transmission at {time_str}"
+        # Animatie lenta si calma
+        bg_anim_dur = "30s"
+        pulse_anim = """<animate attributeName="opacity" values="0.6;0.3;0.6" dur="4s" repeatCount="indefinite"/>"""
+        glow_filter = "none"
 
-    last_date_nice = last_push_ro.strftime("%d %B")
+    last_date_nice = last_push_ro.strftime("%d %b %Y")
 
-    # --- ULTIMATE SVG DESIGN ---
+    # --- THE ULTIMATE SVG ---
     svg = f"""
-    <svg width="500" height="260" viewBox="0 0 500 260" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <svg width="550" height="280" viewBox="0 0 550 280" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <style>
-            .sf {{ font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }}
-            .mono {{ font-family: 'SF Mono', 'Fira Code', Consolas, monospace; letter-spacing: -0.5px; }}
-            
-            /* Text Colors */
+            .sf {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }}
+            .mono {{ font-family: 'SF Mono', 'Fira Code', Consolas, monospace; }}
+            .t-accent {{ fill: {theme_color}; }}
             .t-white {{ fill: #ffffff; }}
-            .t-grey-light {{ fill: rgba(235, 235, 245, 0.6); }}
-            .t-grey-dark {{ fill: rgba(235, 235, 245, 0.4); }}
-            .t-accent {{ fill: #0a84ff; }}
+            .t-dim {{ fill: rgba(255,255,255,0.6); }}
+            
+            /* ANIMATII CSS */
+            /* 1. Background Lichid */
+            @keyframes moveTheme {{ 
+                0% {{ stop-color: {theme_color}; }} 50% {{ stop-color: {secondary_color}; }} 100% {{ stop-color: {theme_color}; }} 
+            }}
+            .anim-stop {{ animation: moveTheme {bg_anim_dur} infinite linear; }}
+            
+            /* 2. Levitatie Card */
+            @keyframes float {{ 0% {{ transform: translateY(0px); }} 50% {{ transform: translateY(-6px); }} 100% {{ transform: translateY(0px); }} }}
+            .floating {{ animation: float 6s ease-in-out infinite; }}
         </style>
         
-        <linearGradient id="bg-dark" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" style="stop-color:#292a2d;stop-opacity:1" />
-            <stop offset="100%" style="stop-color:#1c1c1e;stop-opacity:1" />
+        <linearGradient id="nebula-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#0a0a0a" />
+            <stop offset="50%" class="anim-stop" stop-opacity="0.3" />
+            <stop offset="100%" stop-color="#0a0a0a" />
         </linearGradient>
         
-        <linearGradient id="glass-rim" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" style="stop-color:rgba(255,255,255,0.15);"/>
-            <stop offset="100%" style="stop-color:rgba(255,255,255,0.0);"/>
-        </linearGradient>
-
-        <filter id="f1" x="-10%" y="-10%" width="120%" height="120%">
-            <feOffset result="offOut" in="SourceAlpha" dx="0" dy="6" />
-            <feGaussianBlur result="blurOut" in="offOut" stdDeviation="6" />
-            <feBlend in="SourceGraphic" in2="blurOut" mode="normal" />
+        <filter id="cyan-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+            <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
-        
-        <clipPath id="round-logo"><circle cx="40" cy="40" r="16" /></clipPath>
+
+        <path id="git-icon" d="M10 0a10 10 0 0 0-3.16 19.49c.5.1.68-.22.68-.48l-.01-1.7c-2.78.6-3.37-1.34-3.37-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.89 1.52 2.34 1.08 2.91.83.1-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.1.39-1.99 1.03-2.69a3.6 3.6 0 0 1 .1-2.64s.84-.27 2.75 1.02a9.58 9.58 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.3.1 2.64.64.7 1.03 1.6 1.03 2.69 0 3.84-2.33 4.68-4.56 4.93.36.31.68.92.68 1.85l-.01 2.75c0 .26.18.58.69.48A10 10 0 0 0 10 0z"/>
       </defs>
 
-      <g filter="url(#f1)">
-          <rect x="10" y="10" width="480" height="240" rx="24" fill="url(#bg-dark)" stroke="rgba(0,0,0,0.5)" stroke-width="1"/>
-          <rect x="11" y="11" width="478" height="238" rx="23" fill="url(#glass-rim)" stroke="rgba(255,255,255,0.1)" stroke-width="1.5"/>
-      </g>
+      <rect width="550" height="280" rx="30" fill="#050508" />
+      <rect width="550" height="280" rx="30" fill="url(#nebula-bg)" opacity="0.6" />
       
-      <image x="24" y="24" width="32" height="32" xlink:href="{LOGO_URL}" clip-path="url(#round-logo)"/>
-      
-      <g transform="translate(450, 40)">
-          <text x="-15" y="0" text-anchor="end" class="sf t-white" font-size="13" font-weight="600">{status_text}</text>
-          <text x="-15" y="14" text-anchor="end" class="sf t-grey-dark" font-size="11">{status_sub}</text>
-          <circle cx="5" cy="5" r="5" fill="{status_color}">
-              {pulse_anim}
-          </circle>
-      </g>
-      
-      <line x1="30" y1="70" x2="470" y2="70" stroke="rgba(255,255,255,0.08)" />
-
-
-      <g transform="translate(35, 105)">
-          <text class="sf t-grey-dark" font-size="11" font-weight="600" letter-spacing="0.8">CURRENT FOCUS</text>
+      <g class="floating">
+          <rect x="2" y="2" width="546" height="276" rx="28" fill="none" stroke="{theme_color}" stroke-width="1.5" stroke-opacity="0.3" />
           
-          <text y="28" class="sf t-white" font-size="26" font-weight="700" letter-spacing="-0.5">{name}</text>
-          
-          <g transform="translate(0, 45)">
-              <rect width="430" height="42" rx="10" fill="rgba(0,0,0,0.2)" stroke="rgba(255,255,255,0.08)"/>
-              <path d="M15,26 C15,26 25,16 25,16 C28.3137,12.6863 28.3137,7.31371 25,4 C21.6863,0.686292 16.3137,0.686292 13,4 C13,4 8.87,8.13 8.87,8.13 C6.96,7.39 4.81,7.79 3.29,9.31 C1.34,11.26 1.34,14.42 3.29,16.37 C3.56,16.64 3.85,16.87 4.15,17.08 L5.29,21.08 L9.46,22.29 C9.66,22.59 9.89,22.88 10.16,23.15 C11.69,24.67 13.91,25.06 15.84,24.29 L15,26 Z M16.41,5.41 C18.75,3.07 22.55,3.07 24.89,5.41 C27.23,7.75 27.23,11.55 24.89,13.89 C24.89,13.89 15.06,23.72 15.06,23.72 C13.45,25.33 10.83,25.33 9.22,23.72 C7.61,22.11 7.61,19.49 9.22,17.88 L14.81,12.29 L12.29,9.77 L6.7,15.36 C5.09,16.97 2.47,16.97 0.86,15.36 C-0.75,13.75 -0.75,11.13 0.86,9.52 C2.47,7.91 5.09,7.91 6.7,9.52 L16.41,5.41 Z" transform="translate(10,9) scale(0.6)" fill="#f34f29"/>
-              
-              <text x="32" y="25" class="mono t-grey-light" font-size="12">
-                <tspan fill="#f34f29">Wait, </tspan>{author_name}: <tspan class="t-white">"{msg}"</tspan>
-              </text>
+          <g transform="translate(30, 30)">
+              <circle cx="20" cy="20" r="20" fill="rgba(255,255,255,0.1)" stroke="{theme_color}" stroke-width="2"/>
+              <text x="20" y="27" text-anchor="middle" class="sf t-accent" font-weight="bold" font-size="18">A</text>
+              <circle cx="35" cy="35" r="5" fill="{theme_color}" filter="{glow_filter}">{pulse_anim}</circle>
           </g>
-      </g>
-
-      <g transform="translate(35, 225)">
-          <rect x="0" y="-16" width="auto" height="22" rx="6" fill="rgba(10, 132, 255, 0.15)" stroke="rgba(10, 132, 255, 0.3)"/>
-          <rect x="0" y="-16" width="{len(language)*7 + 20}" height="22" rx="6" fill="rgba(10, 132, 255, 0.15)" stroke="rgba(10, 132, 255, 0.3)"/>
-          <text x="{len(language)*3.5 + 10}" y="0" class="sf t-accent" font-size="11" font-weight="700" text-anchor="middle">{language}</text>
           
-          <text x="160" y="0" class="sf t-grey-dark" font-size="11">Last update: {last_date_nice}</text>
+          <g transform="translate(85, 45)">
+              <text class="sf t-accent" font-size="12" font-weight="bold" letter-spacing="1">{status_text}</text>
+              <text y="18" class="sf t-dim" font-size="11">{status_sub}</text>
+          </g>
           
-          <text x="450" y="0" text-anchor="end" class="sf t-grey-dark" font-size="10" font-weight="600" letter-spacing="1"> andzOS System Bot</text>
-      </g>
-
-    </svg>
+          <text x="520" y="45" text-anchor="end" class="mono t-dim" font-size="10" letter-spacing="2">/// ANDZ.OS_NEBULA_BUILD_v4</text>
+          
+          <g transform="translate(30, 120)">
+              <text class="sf t-dim" font-size="10" font-weight="600" letter-spacing="1">ACTIVE NEURAL PATHWAY</text>
+              <text y="35" class="sf t-white" font-size="32" font-weight="800" letter-spacing="-0.5" filter="{glow_filter}">{name}</text>
+              
+              <g transform="translate(0, 55)">
+                 <rect width="490" height="40" rx="12" fill="rgba(0,0,0,0.3)" stroke="rgba(255,255,255,0.05)"/>
+                 <g transform="translate(15, 25) scale(0.8)">
+                    <use href="#git-icon" fill="{theme_color}"/>
+                 </g>
+                 <text x="45" y="24" class="mono t-dim" font-size="12">
+                    <tspan fill="{theme_color}">[{sha}]</tspan> {msg}
+                 </text>
+              </g>
+          </g>
+          
+          <g transform="translate(30, 245)">
+              <circle cx="5" cy="-4" r="5" fill="{theme_color}" opacity="0.8"/>
+              <text x="15" y="0" class="sf t-white" font-size="12" font-weight="600">{language}</text>
+              
+              <line x1="100" y1="-4" x2="130" y2="-4" stroke="rgba(255,255,255,0.1)"/>
+              
+              <text x="145" y="0" class="sf t-dim" font-size="12">Updated: {last_date_nice}</text>
+          </g>
+      </g></svg>
     """
     
-    # Salvam ca 'andz_os_card.svg' pentru noul branding
-    with open("andz_os_card.svg", "w", encoding="utf-8") as f:
+    with open("nebula_card.svg", "w", encoding="utf-8") as f:
         f.write(svg)
 
 if __name__ == "__main__":
     r, c = get_data()
-    create_ultimate_card(r, c)
+    create_nebula_card(r, c)
