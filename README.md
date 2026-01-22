@@ -33,5 +33,6 @@ Hi! My name is [**Andrei**](https://andzcr.github.io), and I enjoy creating clea
 </div>
 
 <div align="center">
-  <img src="./nebula_card.svg" width="600" />
+  <img src="./ios_dashboard.svg" width="100%" />
 </div>
+
