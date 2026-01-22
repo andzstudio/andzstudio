@@ -1,4 +1,4 @@
-name: Update Final Dashboard
+name: ANDZ_bot
 
 on:
   schedule:
@@ -31,5 +31,5 @@ jobs:
           git config --global user.name "andz-bot"
           git config --global user.email "bot@andzcr.com"
           git add dashboard_final.svg
-          git commit -m "Update flow dashboard" || echo "No changes to commit"
+          git commit -m "Update dashboard visuals" || echo "No changes to commit"
           git push
