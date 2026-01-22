@@ -1,4 +1,4 @@
-name: Update iOS Dashboard
+name: Update Final Dashboard
 
 on:
   schedule:
@@ -28,8 +28,8 @@ jobs:
 
       - name: Commit and Push
         run: |
-          git config --global user.name "andz-ios-bot"
+          git config --global user.name "andz-bot"
           git config --global user.email "bot@andzcr.com"
-          git add ios_dashboard.svg
-          git commit -m "Update dashboard widgets" || echo "No changes to commit"
+          git add dashboard_final.svg
+          git commit -m "Update flow dashboard" || echo "No changes to commit"
           git push
