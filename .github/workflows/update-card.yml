@@ -1,8 +1,8 @@
-name: Update andzOS Interface
+name: Update Nebula OS Card
 
 on:
   schedule:
-    - cron: '*/30 * * * *'
+    - cron: '*/30 * * * *' # Ruleaza la fiecare 30 min
   workflow_dispatch:
 
 jobs:
@@ -28,8 +28,8 @@ jobs:
 
       - name: Commit and Push
         run: |
-          git config --global user.name "andzOS-bot"
-          git config --global user.email "bot@andzcr.system"
-          git add andz_os_card.svg
-          git commit -m "System interface update" || echo "No changes to commit"
+          git config --global user.name "Nebula-Bot"
+          git config --global user.email "bot@andz.os"
+          git add nebula_card.svg
+          git commit -m "System status update" || echo "No changes to commit"
           git push
