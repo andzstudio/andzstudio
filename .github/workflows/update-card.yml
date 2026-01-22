@@ -1,8 +1,8 @@
-name: Update iOS Widget
+name: Update andzOS Interface
 
 on:
   schedule:
-    - cron: '*/30 * * * *' # Ruleaza la fiecare 30 minute
+    - cron: '*/30 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -28,8 +28,8 @@ jobs:
 
       - name: Commit and Push
         run: |
-          git config --global user.name "andzcr-bot"
-          git config --global user.email "bot@andzcr.com"
-          git add ios_card.svg
-          git commit -m "Update iOS widget status" || echo "No changes to commit"
+          git config --global user.name "andzOS-bot"
+          git config --global user.email "bot@andzcr.system"
+          git add andz_os_card.svg
+          git commit -m "System interface update" || echo "No changes to commit"
           git push
