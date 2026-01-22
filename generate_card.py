@@ -1,158 +1,142 @@
 import requests
 import datetime
 from datetime import timedelta
-from collections import defaultdict
 
-# CONFIGURARE
 USERNAME = "andzcr"
-TOKEN = "" # Lasa gol daca nu ai token, dar API-ul are limite (60 requests/ora). 
-# Daca ai erori de limita, iti arat cum sa pui un token.
 
-def get_data():
-    headers = {}
-    if TOKEN:
-        headers['Authorization'] = f"token {TOKEN}"
-        
-    # Luam repo-urile (pana la 100 pt statistica)
-    url = f"https://api.github.com/users/{USERNAME}/repos?sort=pushed&direction=desc&per_page=100"
-    response = requests.get(url, headers=headers)
-    
-    if response.status_code != 200:
-        return None, None
-        
-    repos = response.json()
-    if not repos:
-        return None, None
-        
-    # 1. Date pentru Ultimul Proiect (Primul din lista)
-    last_repo = repos[0]
-    
-    # 2. Calculam Top Limbaje din toate repo-urile
-    langs = defaultdict(int)
-    total_size = 0
-    
-    for repo in repos:
-        if repo['language']:
-            # Folosim marimea repo-ului ca aproximare pentru cat cod e scris
-            langs[repo['language']] += repo['size']
-            total_size += repo['size']
-            
-    # Sortam si luam top 4
-    top_langs = sorted(langs.items(), key=lambda x: x[1], reverse=True)[:4]
-    
-    # Convertim in procente
-    stats = []
-    if total_size > 0:
-        for l, size in top_langs:
-            percent = (size / total_size) * 100
-            stats.append((l, percent))
-            
-    return last_repo, stats
+def get_latest_activity():
+    # 1. Luam ultimul repo editat
+    repos_url = f"https://api.github.com/users/{USERNAME}/repos?sort=pushed&direction=desc"
+    try:
+        r = requests.get(repos_url)
+        if r.status_code != 200 or not r.json(): return None
+        repo = r.json()[0]
+    except: return None
 
-def create_left_card(repo):
-    # CARD 1: LAST PROJECT (FOCUS)
+    # 2. Luam ultimul COMMIT din acel repo (pentru mesaj si autor)
+    commits_url = f"https://api.github.com/repos/{USERNAME}/{repo['name']}/commits"
+    try:
+        c = requests.get(commits_url)
+        latest_commit = c.json()[0] if c.status_code == 200 and c.json() else None
+    except: latest_commit = None
+
+    return repo, latest_commit
+
+def get_time_context(hour):
+    if 5 <= hour < 12: return "MORNING RUN"
+    elif 12 <= hour < 18: return "DAY SESSION"
+    elif 18 <= hour < 22: return "EVENING GRIND"
+    else: return "NIGHT OPS ☾" # Pentru coding noaptea
+
+def create_hud(repo, commit):
     if not repo: return
 
-    name = repo['name']
-    desc = repo['description'] if repo['description'] else "Top secret project."
-    if len(desc) > 50: desc = desc[:47] + "..."
+    # Date de baza
+    repo_name = repo['name'].upper()
+    language = repo['language'] if repo['language'] else "RAW DATA"
     
+    # Date Commit
+    if commit:
+        message = commit['commit']['message'].split('\n')[0] # Luam doar prima linie
+        # Curatam mesajul sa nu fie prea lung
+        if len(message) > 40: message = message[:37] + "..."
+        sha = commit['sha'][:7] # Scurtul hash (ex: a1b2c3d)
+    else:
+        message = "No commit details"
+        sha = "UNKNOWN"
+
+    # Timp
     last_push_utc = datetime.datetime.strptime(repo['pushed_at'], "%Y-%m-%dT%H:%M:%SZ")
     last_push_ro = last_push_utc + timedelta(hours=2)
     time_str = last_push_ro.strftime("%H:%M")
-    date_str = last_push_ro.strftime("%d %b")
+    date_str = last_push_ro.strftime("%d.%m.%Y")
+    session_type = get_time_context(last_push_ro.hour)
+
+    # Culoare dinamica in functie de limbaj (poti adauga altele)
+    colors = {
+        "Python": "#3572A5", "JavaScript": "#f1e05a", "HTML": "#e34c26", 
+        "CSS": "#563d7c", "Java": "#b07219", "C++": "#f34b7d"
+    }
+    accent = colors.get(language, "#00f0ff") # Cyan default
 
     svg = f"""
-    <svg width="400" height="200" viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
-      <style>
-        .bg {{ fill: #0d1117; stroke: #2f80ed; stroke-width: 2px; rx: 10px; }}
-        .text {{ font-family: 'Courier New', monospace; fill: #fff; }}
-        .label {{ font-size: 10px; fill: #8b949e; }}
-        .title {{ font-size: 18px; font-weight: bold; fill: #58a6ff; }}
-        .desc {{ font-size: 12px; fill: #c9d1d9; }}
+    <svg width="800" height="300" viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&amp;display=swap');
+            .txt {{ font-family: 'Share Tech Mono', monospace; fill: {accent}; text-transform: uppercase; }}
+            .dim {{ fill: rgba(255,255,255,0.4); }}
+            .white {{ fill: #fff; }}
+            
+            /* ANIMATII LIVE */
+            
+            /* 1. Cercul care se invarte (Reactor) */
+            @keyframes spin {{ 
+                from {{ transform: rotate(0deg); transform-origin: 150px 150px; }} 
+                to {{ transform: rotate(360deg); transform-origin: 150px 150px; }} 
+            }}
+            .reactor {{ animation: spin 10s linear infinite; }}
+            
+            /* 2. Cercul opus */
+            @keyframes spin-back {{ 
+                from {{ transform: rotate(360deg); transform-origin: 150px 150px; }} 
+                to {{ transform: rotate(0deg); transform-origin: 150px 150px; }} 
+            }}
+            .reactor-outer {{ animation: spin-back 15s linear infinite; opacity: 0.5; }}
+
+            /* 3. Blink Effect pentru cursor */
+            @keyframes blink {{ 50% {{ opacity: 0; }} }}
+            .cursor {{ animation: blink 1s step-end infinite; fill: {accent}; }}
+            
+            /* 4. Slide in pentru text */
+            @keyframes slide {{ from {{ x: 350; opacity: 0; }} to {{ x: 320; opacity: 1; }} }}
+            .slide-text {{ animation: slide 1s ease-out forwards; }}
+            
+            /* Background Grid */
+            .grid {{ stroke: rgba(255,255,255,0.05); stroke-width: 1; }}
+        </style>
         
-        /* Animatie Puls */
-        @keyframes pulse {{
-            0% {{ opacity: 0.5; r: 3; }}
-            50% {{ opacity: 1; r: 5; }}
-            100% {{ opacity: 0.5; r: 3; }}
-        }}
-        .status-dot {{ fill: #3fb950; animation: pulse 2s infinite; }}
-        
-        /* Animatie Linie */
-        @keyframes scan {{
-            0% {{ width: 0; }}
-            100% {{ width: 100px; }}
-        }}
-        .loading-line {{ stroke: #58a6ff; stroke-width: 2; stroke-dasharray: 100; stroke-dashoffset: 100; animation: scan 1.5s forwards; }}
-      </style>
+        <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" style="stop-color:rgba(10,10,20,1);stop-opacity:1" />
+            <stop offset="100%" style="stop-color:rgba(20,20,40,1);stop-opacity:1" />
+        </linearGradient>
+      </defs>
+
+      <rect width="800" height="300" rx="15" fill="url(#grad)" stroke="{accent}" stroke-width="2" stroke-opacity="0.3"/>
       
-      <rect width="398" height="198" x="1" y="1" class="bg" />
+      <line x1="0" y1="50" x2="800" y2="50" class="grid" />
+      <line x1="0" y1="150" x2="800" y2="150" class="grid" />
+      <line x1="0" y1="250" x2="800" y2="250" class="grid" />
       
-      <circle cx="20" cy="25" r="4" class="status-dot" />
-      <text x="35" y="28" class="text" font-size="12" fill="#3fb950">ACTIVE SESSION</text>
-      <text x="320" y="28" class="text" font-size="12" fill="#8b949e">{time_str}</text>
+      <circle cx="150" cy="150" r="40" stroke="{accent}" stroke-width="2" fill="none" stroke-dasharray="10 5" class="reactor" />
+      <circle cx="150" cy="150" r="70" stroke="{accent}" stroke-width="1" fill="none" stroke-dasharray="40 10" class="reactor-outer" />
+      <text x="150" y="155" text-anchor="middle" class="txt white" font-size="14" font-weight="bold">LIVE</text>
       
-      <text x="20" y="70" class="label">CURRENT MISSION</text>
-      <text x="20" y="95" class="text title">{name}</text>
-      <text x="20" y="115" class="text desc">{desc}</text>
+      <text x="320" y="60" class="txt dim" font-size="12">ACTIVE PROJECT // {session_type}</text>
+      <text x="320" y="90" class="txt white slide-text" font-size="32" filter="url(#glow)">{repo_name}</text>
       
-      <line x1="20" y1="140" x2="380" y2="140" stroke="#30363d" />
+      <text x="320" y="140" class="txt dim" font-size="12">LAST TRANSMISSION (COMMIT {sha})</text>
+      <text x="320" y="165" class="txt" font-size="18">
+         > {message}<tspan class="cursor">_</tspan>
+      </text>
       
-      <text x="20" y="165" class="label">LAST COMMIT</text>
-      <text x="20" y="180" class="text" font-size="12">{date_str} @ {time_str}</text>
+      <line x1="320" y1="200" x2="750" y2="200" stroke="{accent}" stroke-width="1" stroke-opacity="0.3" />
       
-      <text x="250" y="165" class="label">STATUS</text>
-      <text x="250" y="180" class="text" font-size="12" fill="#3fb950">IN PROGRESS...</text>
+      <text x="320" y="230" class="txt dim" font-size="12">LANGUAGE</text>
+      <text x="320" y="250" class="txt white" font-size="16">{language}</text>
+      
+      <text x="450" y="230" class="txt dim" font-size="12">TIMESTAMP (RO)</text>
+      <text x="450" y="250" class="txt white" font-size="16">{date_str} {time_str}</text>
+      
+      <text x="600" y="230" class="txt dim" font-size="12">SYSTEM</text>
+      <text x="600" y="250" class="txt" font-size="16" fill="#0f0">ONLINE</text>
+      
     </svg>
     """
-    with open("card_left.svg", "w", encoding="utf-8") as f: f.write(svg)
-
-def create_right_card(stats):
-    # CARD 2: ARSENAL (STATS)
-    if not stats: return
-
-    # Generam barele de progres dinamic
-    bars_svg = ""
-    y_pos = 60
-    colors = ["#f1e05a", "#3178c6", "#e34c26", "#563d7c"] # Galben, Albastru, Rosu, Mov
     
-    for i, (lang, pct) in enumerate(stats):
-        color = colors[i % len(colors)]
-        width = int((pct / 100) * 200) # Max width 200px
-        
-        bars_svg += f"""
-        <text x="20" y="{y_pos}" class="text" font-size="12">{lang}</text>
-        <text x="330" y="{y_pos}" class="text" font-size="12" text-anchor="end">{int(pct)}%</text>
-        
-        <rect x="20" y="{y_pos + 5}" width="200" height="6" rx="3" fill="#30363d" />
-        <rect x="20" y="{y_pos + 5}" width="0" height="6" rx="3" fill="{color}">
-            <animate attributeName="width" from="0" to="{width}" dur="1s" fill="freeze" calcMode="spline" keySplines="0.25 0.1 0.25 1" />
-        </rect>
-        """
-        y_pos += 35
-
-    svg = f"""
-    <svg width="400" height="200" viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
-      <style>
-        .bg {{ fill: #0d1117; stroke: #a371f7; stroke-width: 2px; rx: 10px; }} 
-        /* Stroke mov pentru contrast cu celalalt card */
-        .text {{ font-family: 'Courier New', monospace; fill: #fff; }}
-        .header {{ font-size: 14px; font-weight: bold; fill: #a371f7; }}
-      </style>
-      
-      <rect width="398" height="198" x="1" y="1" class="bg" />
-      
-      <text x="20" y="30" class="header">/// SKILL_ARSENAL_ANALYSIS</text>
-      <line x1="20" y1="40" x2="380" y2="40" stroke="#30363d" />
-      
-      {bars_svg}
-      
-    </svg>
-    """
-    with open("card_right.svg", "w", encoding="utf-8") as f: f.write(svg)
+    with open("hud_card.svg", "w", encoding="utf-8") as f:
+        f.write(svg)
 
 if __name__ == "__main__":
-    repo, stats = get_data()
-    create_left_card(repo)
-    create_right_card(stats)
+    r, c = get_latest_activity()
+    create_hud(r, c)
