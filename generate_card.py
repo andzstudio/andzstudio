@@ -1,60 +1,102 @@
 import requests
 import datetime
+from datetime import timedelta
 
 # CONFIGURARE
 USERNAME = "andzcr"
-GIF_URL = "https://github.com/andzcr/andzcr/assets/banner.gif"
 
 def get_last_updated_repo():
-    url = f"https://api.github.com/users/{USERNAME}/repos?sort=pushed&direction=desc"
-    response = requests.get(url)
-    if response.status_code == 200:
-        repos = response.json()
-        if repos:
-            return repos[0] # Primul repo este cel mai recent editat
+    try:
+        # Luam repo-urile sortate dupa push
+        url = f"https://api.github.com/users/{USERNAME}/repos?sort=pushed&direction=desc"
+        response = requests.get(url)
+        if response.status_code == 200:
+            repos = response.json()
+            if repos:
+                return repos[0]
+    except Exception as e:
+        print(f"Error fetching repo: {e}")
     return None
 
 def create_svg(repo):
     if not repo:
         return
     
+    # Date extrase
     name = repo['name']
-    desc = repo['description'] if repo['description'] else "No description available."
-    # Tăiem descrierea dacă e prea lungă
-    if len(desc) > 55:
-        desc = desc[:52] + "..."
+    desc = repo['description'] if repo['description'] else "No description provided."
+    if len(desc) > 60:
+        desc = desc[:57] + "..."
         
-    language = repo['language'] if repo['language'] else "Unknown"
-    last_push = datetime.datetime.strptime(repo['pushed_at'], "%Y-%m-%dT%H:%M:%SZ")
-    time_str = last_push.strftime("%d %b %Y, %H:%M")
+    language = repo['language'] if repo['language'] else "N/A"
+    stars = repo['stargazers_count']
+    forks = repo['forks_count']
     
-    # SVG Template
+    # Timezone fix: GitHub da ora in UTC, noi adaugam 2 ore pentru Romania
+    last_push_utc = datetime.datetime.strptime(repo['pushed_at'], "%Y-%m-%dT%H:%M:%SZ")
+    last_push_ro = last_push_utc + timedelta(hours=2)
+    time_str = last_push_ro.strftime("%d %b %Y, %H:%M") # Format curat
+
+    # SVG Design - Modern Dark Theme cu Animatie CSS
     svg_content = f"""
-    <svg width="800" height="200" viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <svg width="450" height="220" viewBox="0 0 450 220" xmlns="http://www.w3.org/2000/svg">
       <style>
-        .title {{ font-family: 'Segoe UI', Ubuntu, Sans-Serif; font-size: 24px; font-weight: bold; fill: #ffffff; }}
-        .desc {{ font-family: 'Segoe UI', Ubuntu, Sans-Serif; font-size: 16px; fill: #cccccc; }}
-        .stat {{ font-family: 'Segoe UI', Ubuntu, Sans-Serif; font-size: 14px; fill: #00ff00; font-weight: bold; }}
-        .bg-overlay {{ fill: rgba(0, 0, 0, 0.7); }}
-        .border {{ fill: none; stroke: #30363d; stroke-width: 2px; rx: 10px; }}
+        .container {{ font-family: 'Segoe UI', Ubuntu, Sans-Serif; fill: #E6EDF3; }}
+        .card-bg {{ fill: #0d1117; stroke: #30363d; stroke-width: 1px; rx: 15px; }}
+        
+        /* Gradient Animat pentru Header */
+        .header-bg {{ fill: url(#grad1); }}
+        @keyframes gradient-anim {{
+            0% {{ stop-color: #2f80ed; }}
+            50% {{ stop-color: #a044ff; }}
+            100% {{ stop-color: #2f80ed; }}
+        }}
+        #stop1 {{ animation: gradient-anim 4s infinite; }}
+        
+        /* Texte */
+        .title {{ font-size: 20px; font-weight: 700; fill: #ffffff; }}
+        .desc {{ font-size: 14px; fill: #8b949e; }}
+        .label {{ font-size: 12px; font-weight: 600; fill: #8b949e; }}
+        .value {{ font-size: 12px; font-weight: 600; fill: #E6EDF3; }}
+        
+        /* Icon placeholders (simple circles/paths for clean look) */
+        .icon {{ fill: #8b949e; }}
       </style>
       
       <defs>
-        <clipPath id="clip">
-          <rect width="800" height="200" rx="10" />
+        <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" style="stop-color:#2f80ed;stop-opacity:1" id="stop1" />
+          <stop offset="100%" style="stop-color:#00c6ff;stop-opacity:1" />
+        </linearGradient>
+        <clipPath id="clip-header">
+            <path d="M1 1 L449 1 L449 60 L1 60 Z" />
         </clipPath>
       </defs>
-      <image href="{GIF_URL}" width="800" height="200" preserveAspectRatio="xMidYMid slice" clip-path="url(#clip)" />
+
+      <rect x="0.5" y="0.5" width="449" height="219" class="card-bg" />
       
-      <rect x="0" y="0" width="800" height="200" class="bg-overlay" clip-path="url(#clip)" />
+      <rect x="1" y="1" width="448" height="8" rx="14" fill="url(#grad1)" clip-path="url(#clip-header)" />
       
-      <text x="30" y="50" class="title">Last Project: {name}</text>
-      <text x="30" y="85" class="desc">{desc}</text>
+      <text x="25" y="50" class="title">{name}</text>
       
-      <text x="30" y="140" class="stat">⚡ Last Update: {time_str}</text>
-      <text x="30" y="165" class="stat">💻 Main Language: {language}</text>
+      <text x="25" y="80" class="desc">{desc}</text>
       
-      <rect x="1" y="1" width="798" height="198" class="border" rx="10" />
+      <line x1="25" y1="100" x2="425" y2="100" stroke="#30363d" stroke-width="1" />
+      
+      <text x="25" y="130" class="label">MAIN LANGUAGE</text>
+      <text x="25" y="150" class="value" style="fill:#58a6ff;">● {language}</text>
+      
+      <text x="220" y="130" class="label">LAST UPDATE (RO)</text>
+      <text x="220" y="150" class="value">{time_str}</text>
+      
+      <text x="25" y="185" class="label">STARS</text>
+      <text x="25" y="205" class="value">★ {stars}</text>
+      
+      <text x="100" y="185" class="label">FORKS</text>
+      <text x="100" y="205" class="value">⑂ {forks}</text>
+      
+      <text x="360" y="205" font-size="10" fill="#30363d">andzcr bot</text>
+      
     </svg>
     """
     
@@ -64,4 +106,3 @@ def create_svg(repo):
 if __name__ == "__main__":
     repo = get_last_updated_repo()
     create_svg(repo)
-
