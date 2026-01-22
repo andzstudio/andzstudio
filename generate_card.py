@@ -2,141 +2,121 @@ import requests
 import datetime
 from datetime import timedelta
 
+# CONFIGURARE
 USERNAME = "andzcr"
 
-def get_latest_activity():
-    # 1. Luam ultimul repo editat
-    repos_url = f"https://api.github.com/users/{USERNAME}/repos?sort=pushed&direction=desc"
+def get_data():
+    # 1. Luam repo-urile
     try:
-        r = requests.get(repos_url)
-        if r.status_code != 200 or not r.json(): return None
+        url = f"https://api.github.com/users/{USERNAME}/repos?sort=pushed&direction=desc"
+        r = requests.get(url)
+        if r.status_code != 200 or not r.json(): return None, None
         repo = r.json()[0]
-    except: return None
+    except: return None, None
 
-    # 2. Luam ultimul COMMIT din acel repo (pentru mesaj si autor)
-    commits_url = f"https://api.github.com/repos/{USERNAME}/{repo['name']}/commits"
+    # 2. Luam ultimul commit pentru detalii
     try:
-        c = requests.get(commits_url)
-        latest_commit = c.json()[0] if c.status_code == 200 and c.json() else None
-    except: latest_commit = None
+        c_url = f"https://api.github.com/repos/{USERNAME}/{repo['name']}/commits"
+        c = requests.get(c_url)
+        commit = c.json()[0] if c.status_code == 200 and c.json() else None
+    except: commit = None
+    
+    return repo, commit
 
-    return repo, latest_commit
-
-def get_time_context(hour):
-    if 5 <= hour < 12: return "MORNING RUN"
-    elif 12 <= hour < 18: return "DAY SESSION"
-    elif 18 <= hour < 22: return "EVENING GRIND"
-    else: return "NIGHT OPS ☾" # Pentru coding noaptea
-
-def create_hud(repo, commit):
+def create_ios_card(repo, commit):
     if not repo: return
 
-    # Date de baza
-    repo_name = repo['name'].upper()
-    language = repo['language'] if repo['language'] else "RAW DATA"
+    # --- DATA PROCESSING ---
+    name = repo['name']
+    language = repo['language'] if repo['language'] else "Unknown"
     
-    # Date Commit
     if commit:
-        message = commit['commit']['message'].split('\n')[0] # Luam doar prima linie
-        # Curatam mesajul sa nu fie prea lung
-        if len(message) > 40: message = message[:37] + "..."
-        sha = commit['sha'][:7] # Scurtul hash (ex: a1b2c3d)
+        msg = commit['commit']['message'].split('\n')[0]
+        if len(msg) > 45: msg = msg[:42] + "..."
     else:
-        message = "No commit details"
-        sha = "UNKNOWN"
+        msg = "No details available"
 
-    # Timp
+    # Time Logic (Romania UTC+2)
     last_push_utc = datetime.datetime.strptime(repo['pushed_at'], "%Y-%m-%dT%H:%M:%SZ")
     last_push_ro = last_push_utc + timedelta(hours=2)
-    time_str = last_push_ro.strftime("%H:%M")
-    date_str = last_push_ro.strftime("%d.%m.%Y")
-    session_type = get_time_context(last_push_ro.hour)
+    
+    now_utc = datetime.datetime.utcnow()
+    now_ro = now_utc + timedelta(hours=2)
+    
+    # Calculam diferenta
+    diff = now_ro - last_push_ro
+    minutes_diff = diff.total_seconds() / 60
+    
+    # STATUS LOGIC
+    if minutes_diff < 45: # Consideram activ daca a dat push in ultimele 45 min
+        is_online = True
+        status_text = "Active Now"
+        status_color = "#30d158" # Apple Green
+        status_sub = "Coding..."
+    else:
+        is_online = False
+        time_str = last_push_ro.strftime("%H:%M")
+        status_text = "Offline"
+        status_color = "#8e8e93" # Apple Grey
+        status_sub = f"Since {time_str}"
 
-    # Culoare dinamica in functie de limbaj (poti adauga altele)
-    colors = {
-        "Python": "#3572A5", "JavaScript": "#f1e05a", "HTML": "#e34c26", 
-        "CSS": "#563d7c", "Java": "#b07219", "C++": "#f34b7d"
-    }
-    accent = colors.get(language, "#00f0ff") # Cyan default
+    last_update_str = last_push_ro.strftime("%d %b")
 
+    # --- SVG DESIGN (Apple Glassmorphism) ---
     svg = f"""
-    <svg width="800" height="300" viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
+    <svg width="450" height="240" viewBox="0 0 450 240" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <style>
-            @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&amp;display=swap');
-            .txt {{ font-family: 'Share Tech Mono', monospace; fill: {accent}; text-transform: uppercase; }}
-            .dim {{ fill: rgba(255,255,255,0.4); }}
-            .white {{ fill: #fff; }}
+            .sf-font {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }}
+            .glass {{ fill: rgba(22, 22, 23, 0.9); stroke: rgba(255, 255, 255, 0.15); stroke-width: 1; }}
             
-            /* ANIMATII LIVE */
-            
-            /* 1. Cercul care se invarte (Reactor) */
-            @keyframes spin {{ 
-                from {{ transform: rotate(0deg); transform-origin: 150px 150px; }} 
-                to {{ transform: rotate(360deg); transform-origin: 150px 150px; }} 
+            /* Status Pulse Animation (Doar daca e online) */
+            @keyframes pulse {{
+                0% {{ box-shadow: 0 0 0 0 rgba(48, 209, 88, 0.7); opacity: 1; }}
+                100% {{ box-shadow: 0 0 0 10px rgba(48, 209, 88, 0); opacity: 0.5; }}
             }}
-            .reactor {{ animation: spin 10s linear infinite; }}
+            .pulse-circle {{ animation: {'pulse 2s infinite' if is_online else 'none'}; }}
             
-            /* 2. Cercul opus */
-            @keyframes spin-back {{ 
-                from {{ transform: rotate(360deg); transform-origin: 150px 150px; }} 
-                to {{ transform: rotate(0deg); transform-origin: 150px 150px; }} 
-            }}
-            .reactor-outer {{ animation: spin-back 15s linear infinite; opacity: 0.5; }}
-
-            /* 3. Blink Effect pentru cursor */
-            @keyframes blink {{ 50% {{ opacity: 0; }} }}
-            .cursor {{ animation: blink 1s step-end infinite; fill: {accent}; }}
-            
-            /* 4. Slide in pentru text */
-            @keyframes slide {{ from {{ x: 350; opacity: 0; }} to {{ x: 320; opacity: 1; }} }}
-            .slide-text {{ animation: slide 1s ease-out forwards; }}
-            
-            /* Background Grid */
-            .grid {{ stroke: rgba(255,255,255,0.05); stroke-width: 1; }}
+            /* Text Colors */
+            .text-white {{ fill: #ffffff; }}
+            .text-grey {{ fill: #86868b; }}
+            .text-accent {{ fill: #0a84ff; }} /* Apple Blue */
         </style>
         
-        <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" style="stop-color:rgba(10,10,20,1);stop-opacity:1" />
-            <stop offset="100%" style="stop-color:rgba(20,20,40,1);stop-opacity:1" />
+        <linearGradient id="bg-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#1c1c1e;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#000000;stop-opacity:1" />
         </linearGradient>
       </defs>
 
-      <rect width="800" height="300" rx="15" fill="url(#grad)" stroke="{accent}" stroke-width="2" stroke-opacity="0.3"/>
+      <rect x="2" y="2" width="446" height="236" rx="26" fill="url(#bg-grad)" stroke="#3a3a3c" stroke-width="1" />
       
-      <line x1="0" y1="50" x2="800" y2="50" class="grid" />
-      <line x1="0" y1="150" x2="800" y2="150" class="grid" />
-      <line x1="0" y1="250" x2="800" y2="250" class="grid" />
+      <circle cx="35" cy="35" r="5" fill="{status_color}" class="pulse-circle" />
+      <text x="50" y="39" class="sf-font text-white" font-size="14" font-weight="600">{status_text}</text>
+      <text x="415" y="39" class="sf-font text-grey" font-size="12" text-anchor="end">{status_sub}</text>
       
-      <circle cx="150" cy="150" r="40" stroke="{accent}" stroke-width="2" fill="none" stroke-dasharray="10 5" class="reactor" />
-      <circle cx="150" cy="150" r="70" stroke="{accent}" stroke-width="1" fill="none" stroke-dasharray="40 10" class="reactor-outer" />
-      <text x="150" y="155" text-anchor="middle" class="txt white" font-size="14" font-weight="bold">LIVE</text>
+      <line x1="25" y1="60" x2="425" y2="60" stroke="#3a3a3c" stroke-width="1" />
+
+      <text x="35" y="90" class="sf-font text-grey" font-size="11" font-weight="500" letter-spacing="0.5">LATEST WORKSPACE</text>
       
-      <text x="320" y="60" class="txt dim" font-size="12">ACTIVE PROJECT // {session_type}</text>
-      <text x="320" y="90" class="txt white slide-text" font-size="32" filter="url(#glow)">{repo_name}</text>
+      <text x="35" y="120" class="sf-font text-white" font-size="24" font-weight="700">{name}</text>
       
-      <text x="320" y="140" class="txt dim" font-size="12">LAST TRANSMISSION (COMMIT {sha})</text>
-      <text x="320" y="165" class="txt" font-size="18">
-         > {message}<tspan class="cursor">_</tspan>
-      </text>
+      <g transform="translate(35, 145)">
+         <rect x="0" y="0" width="380" height="30" rx="8" fill="#2c2c2e" />
+         <text x="10" y="20" class="sf-font" fill="#d1d1d6" font-size="13" font-family="monospace">git commit -m "{msg}"</text>
+      </g>
       
-      <line x1="320" y1="200" x2="750" y2="200" stroke="{accent}" stroke-width="1" stroke-opacity="0.3" />
+      <rect x="35" y="190" width="100" height="24" rx="12" fill="rgba(10, 132, 255, 0.2)" stroke="rgba(10, 132, 255, 0.5)" />
+      <text x="85" y="206" class="sf-font" fill="#0a84ff" font-size="12" font-weight="600" text-anchor="middle">{language}</text>
       
-      <text x="320" y="230" class="txt dim" font-size="12">LANGUAGE</text>
-      <text x="320" y="250" class="txt white" font-size="16">{language}</text>
-      
-      <text x="450" y="230" class="txt dim" font-size="12">TIMESTAMP (RO)</text>
-      <text x="450" y="250" class="txt white" font-size="16">{date_str} {time_str}</text>
-      
-      <text x="600" y="230" class="txt dim" font-size="12">SYSTEM</text>
-      <text x="600" y="250" class="txt" font-size="16" fill="#0f0">ONLINE</text>
+      <text x="415" y="206" class="sf-font text-grey" font-size="12" text-anchor="end">Updated on {last_update_str}</text>
       
     </svg>
     """
     
-    with open("hud_card.svg", "w", encoding="utf-8") as f:
+    with open("ios_card.svg", "w", encoding="utf-8") as f:
         f.write(svg)
 
 if __name__ == "__main__":
-    r, c = get_latest_activity()
-    create_hud(r, c)
+    r, c = get_data()
+    create_ios_card(r, c)
