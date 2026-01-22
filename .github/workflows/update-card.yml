@@ -1,16 +1,15 @@
-name: Update Last Project Card
+name: Update Dashboard
 
 on:
   schedule:
-    # Rulează la fiecare 6 ore
     - cron: '0 */6 * * *'
-  workflow_dispatch: # Permite rularea manuală de la buton
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Important: permite botului să dea push la SVG
+      contents: write
 
     steps:
       - name: Checkout Code
@@ -21,7 +20,7 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Install Dependencies
+      - name: Install Requests
         run: pip install requests
 
       - name: Run Script
@@ -29,9 +28,8 @@ jobs:
 
       - name: Commit and Push
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add last_project.svg
-          git commit -m "Update last project card" || echo "No changes to commit"
+          git config --global user.name "andzcr-bot"
+          git config --global user.email "bot@andzcr.com"
+          git add card_left.svg card_right.svg
+          git commit -m "Update dashboard stats" || echo "No changes to commit"
           git push
-
