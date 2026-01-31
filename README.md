@@ -34,16 +34,17 @@
   </h3>
 
   <p>
-    <img src="https://www.readmecodegen.com/api/social-icon?name=html5&size=40&animation=fade&animationDuration=5" alt="html5" />
-    <img src="https://www.readmecodegen.com/api/social-icon?name=css&size=40&animation=fade&animationDuration=5" alt="css" />
-    <img src="https://www.readmecodegen.com/api/social-icon?name=javascript&size=40&animation=fade&animationDuration=5" alt="javascript" />
-    <img src="https://www.readmecodegen.com/api/social-icon?name=python&size=40&animation=fade&animationDuration=5" alt="python" />
-    <img src="https://www.readmecodegen.com/api/social-icon?name=cplusplus&size=40&animation=fade&animationDuration=5" alt="cplusplus" />
-    <img src="https://www.readmecodegen.com/api/social-icon?name=php&size=40&animation=fade&animationDuration=5" alt="php" />
-    <img src="https://www.readmecodegen.com/api/social-icon?name=tailwindcss&size=40&animation=fade&animationDuration=5" alt="tailwindcss" />
-    <img src="https://www.readmecodegen.com/api/social-icon?name=git&size=40&animation=fade&animationDuration=5" alt="git" />
-    <img src="https://www.readmecodegen.com/api/social-icon?name=firebase&size=40&animation=fade&animationDuration=5" alt="firebase" />
-    <img src="https://www.readmecodegen.com/api/social-icon?name=autocad&size=40&animation=fade&animationDuration=5" alt="autocad" />
+<img src="https://www.readmecodegen.com/api/social-icon?name=html5&size=40&animation=fade&animationDuration=5" alt="html5" />
+<img src="https://www.readmecodegen.com/api/social-icon?name=css&size=40&animation=fade&animationDuration=5" alt="css" />
+<img src="https://www.readmecodegen.com/api/social-icon?name=javascript&size=40&animation=fade&animationDuration=5" alt="javascript" />
+<img src="https://www.readmecodegen.com/api/social-icon?name=nodejs&size=40&animation=fade&animationDuration=5" alt="nodejs" />
+<img src="https://www.readmecodegen.com/api/social-icon?name=python&size=40&animation=fade&animationDuration=5" alt="python" />
+<img src="https://www.readmecodegen.com/api/social-icon?name=cplusplus&size=40&animation=fade&animationDuration=5" alt="cplusplus" />
+<img src="https://www.readmecodegen.com/api/social-icon?name=php&size=40&animation=fade&animationDuration=5" alt="php" />
+<img src="https://www.readmecodegen.com/api/social-icon?name=tailwindcss&size=40&animation=fade&animationDuration=5" alt="tailwindcss" />
+<img src="https://www.readmecodegen.com/api/social-icon?name=git&size=40&animation=fade&animationDuration=5" alt="git" />
+<img src="https://www.readmecodegen.com/api/social-icon?name=firebase&size=40&animation=fade&animationDuration=5" alt="firebase" />
+<img src="https://www.readmecodegen.com/api/social-icon?name=autocad&size=40&animation=fade&animationDuration=5" alt="autocad" />
   </p>
 
   <br>
@@ -68,9 +69,4 @@
     &nbsp;
     <a href="mailto:lehadus04@gmail.com"><img src="https://www.readmecodegen.com/api/social-icon?name=gmail&size=32&animation=fade&animationDuration=5" alt="gmail" /></a>
   </p>
-
-  <br>
-
-  <img src="./dashboard_final.svg" width="100%" />
-
 </div>
